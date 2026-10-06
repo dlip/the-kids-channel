@@ -4,6 +4,18 @@ Notable changes to The Kids Channel are recorded here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Retain prepared neighboring players when switching to a channel that has not
+  finished loading, so rapid swipes do not discard warm videos.
+- Save outgoing screenshots asynchronously after pausing instead of delaying
+  channel handoff, and avoid reading live video frames during playback.
+- Show a prepared channel directly during handoff and update native video
+  positions without recomposing every player during the scroll animation.
+- Preserve the paused image when returning from the background and reset frame
+  readiness when a video or its surface changes, preventing stale screenshots
+  and premature loading-indicator dismissal.
+
 ## [1.10.6] - 2026-10-03
 
 ### Fixed

@@ -146,8 +146,8 @@ private fun rememberChannelPlayer(
         )
     }
 
-    suspend fun captureAndSavePreview() {
-        if (!isActive || player.isPlaying) return
+    suspend fun captureAndSavePreview(requireActive: Boolean = true) {
+        if ((requireActive && !isActive) || player.isPlaying) return
         val videoUri = playlist.getOrNull(currentIndex)?.uri?.toString() ?: return
         val previewChannelUri = playingChannelUri ?: return
         if (channelUri != previewChannelUri) return
@@ -165,7 +165,7 @@ private fun rememberChannelPlayer(
             val bitmap = captureVideoFrame(previewSource) ?: return@withLock
             if (playingChannelUri != previewChannelUri || videoLayout !== previewSource ||
                 playlist.getOrNull(currentIndex)?.uri?.toString() != videoUri ||
-                !hasRenderedFirstFrame
+                !hasRenderedFirstFrame || player.isPlaying
             ) {
                 bitmap.recycle()
                 return@withLock
@@ -179,12 +179,15 @@ private fun rememberChannelPlayer(
     }
 
     suspend fun prepareChannelChange() {
-        persistProgress()?.join()
+        persistProgress()
         warmupPaused = true
+        VlcAudioFilter.setAudible(player, false)
         player.pause()
-        withTimeoutOrNull(250) {
-            while (player.isPlaying) delay(10)
-            captureAndSavePreview()
+        coroutineScope.launch {
+            withTimeoutOrNull(250) {
+                while (player.isPlaying) delay(10)
+                captureAndSavePreview(requireActive = false)
+            }
         }
     }
 
@@ -235,6 +238,10 @@ private fun rememberChannelPlayer(
     }
 
     fun playVideo(index: Int, positionMs: Long = 0, recovering: Boolean = false) {
+        if (debugLogging) {
+            Log.d("VlcPlayback", "load channel=$channelUri active=$isActive " +
+                "position=$positionMs recovering=$recovering")
+        }
         if (!recovering) frameRecovery.reset()
         activelyPlaying = false
         preparationFailed = false
@@ -254,6 +261,8 @@ private fun rememberChannelPlayer(
         playingChannelUri = channelUri
         lastProgressPositionMs = positionMs.coerceAtLeast(0)
         hasRenderedFirstFrame = false
+        playbackFrameState.value = false
+        playbackFrameGate.reset(positionMs.coerceAtLeast(0))
         pendingStartPositionMs = positionMs.coerceAtLeast(0)
         requestedStartPositionMs = positionMs.coerceAtLeast(0)
         confirmedPositionMs = if (positionMs == 0L) 0L else -1L
@@ -311,6 +320,10 @@ private fun rememberChannelPlayer(
     }
 
     LaunchedEffect(player, active) {
+        if (debugLogging) {
+            Log.d("VlcPlayback", "active=$active channel=$channelUri " +
+                "prepared=$hasRenderedFirstFrame position=${player.time}")
+        }
         preparedAudioMuted = false
         VlcAudioFilter.setAudible(player, active)
         if (!active && hasRenderedFirstFrame &&
@@ -342,7 +355,8 @@ private fun rememberChannelPlayer(
                 Log.d("VlcRecovery", "position=${player.time} playing=${player.isPlaying} " +
                     "prepared=$hasRenderedFirstFrame visible=${playbackFrameState.value} " +
                     "confirmed=$confirmedPositionMs requested=$requestedStartPositionMs " +
-                    "decoded=${stats?.decodedVideo} displayed=${stats?.displayedPictures}")
+                    "decoded=${stats?.decodedVideo} displayed=${stats?.displayedPictures} " +
+                    "audio=${stats?.decodedAudio}/${stats?.playedAbuffers} channel=$channelUri")
             }
             if (frameWatchdog.shouldRecover(
                     SystemClock.elapsedRealtime(),
@@ -455,6 +469,8 @@ private fun rememberChannelPlayer(
                     player.pause()
                     detachVideoViews()
                     hasRenderedFirstFrame = false
+                    playbackFrameState.value = false
+                    playbackFrameGate.reset(player.time.coerceAtLeast(0))
                 }
                 else -> Unit
             }
@@ -512,11 +528,6 @@ private fun rememberChannelPlayer(
             isPaused = !isPaused
             if (isPaused) player.pause() else player.play()
         },
-        capturePreview = {
-            if (hasRenderedFirstFrame && !player.isPlaying) {
-                videoLayout?.let { captureVideoFrame(it) }
-            } else null
-        },
         prepareChannelChange = ::prepareChannelChange,
         openSettings = {
             coroutineScope.launch {
@@ -536,14 +547,14 @@ private fun rememberChannelPlayer(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
                             )
                             alpha = if (visible) 1f else 0f
-                            translationY = offset
+                            translationY = offset()
                             videoLayout = this
                             attachVideoViews()
                         }
                     },
                     update = {
                         it.alpha = if (visible) 1f else 0f
-                        it.translationY = offset
+                        it.translationY = offset()
                     },
                 )
             }

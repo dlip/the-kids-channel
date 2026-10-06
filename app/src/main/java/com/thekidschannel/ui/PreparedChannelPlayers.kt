@@ -1,12 +1,15 @@
 package com.thekidschannel.ui
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import com.thekidschannel.MainUiState
@@ -17,10 +20,9 @@ internal data class ChannelPlayerControls(
     val hasPreparedFrame: () -> Boolean,
     val hasRenderedFirstFrame: () -> Boolean,
     val togglePlayback: () -> Unit,
-    val capturePreview: suspend () -> Bitmap?,
     val prepareChannelChange: suspend () -> Unit,
     val openSettings: () -> Unit,
-    val videoSurface: @Composable (Float, Boolean) -> Unit,
+    val videoSurface: @Composable (() -> Float, Boolean) -> Unit,
 )
 
 @Composable
@@ -40,7 +42,10 @@ internal fun PreparedPlayerScreen(
             val active = channel.uri == currentUri
             val playback = state.preparedChannels[channel.uri]
             val player = key(channel.uri, state.normalizeAudio) {
-                if (active || (currentFrameReady && playback?.videos?.isNotEmpty() == true)) {
+                // A cold selection must not dispose neighbors that are already warm.
+                var started by remember { mutableStateOf(false) }
+                if (active || started || (currentFrameReady && playback?.videos?.isNotEmpty() == true)) {
+                    SideEffect { started = true }
                     val channelState = if (active) state else state.copy(
                         selectedChannel = channel,
                         videos = playback?.videos.orEmpty(),
@@ -58,6 +63,7 @@ internal fun PreparedPlayerScreen(
             }
         }
     val current = players[currentUri] ?: return
+    val preparedAtEntry = remember(currentUri, state.normalizeAudio) { current.hasPreparedFrame() }
     val view = LocalView.current
     val isPaused = current.isPaused()
     SideEffect { view.keepScreenOn = !isPaused }
@@ -67,13 +73,13 @@ internal fun PreparedPlayerScreen(
     PlayerScreenLayout(
         state = state,
         isPaused = isPaused,
-        showPreview = !current.hasRenderedFirstFrame(),
+        showPreview = !(preparedAtEntry && current.hasPreparedFrame()) && !current.hasRenderedFirstFrame(),
+        isPlaybackReady = current.hasRenderedFirstFrame(),
         onTogglePlayback = current.togglePlayback,
         onPrepareChannelChange = current.prepareChannelChange,
         onSelectChannel = onSelectChannel,
         onChannelPreviewPath = onChannelPreviewPath,
         onSettings = current.openSettings,
-        capturePreparedPreview = { uri -> players[uri]?.capturePreview() },
         hasPreparedVideo = { uri -> players[uri]?.hasPreparedFrame() == true },
         videoSurface = { offset, incomingUri, incomingOffset ->
             Box(Modifier.fillMaxSize()) {

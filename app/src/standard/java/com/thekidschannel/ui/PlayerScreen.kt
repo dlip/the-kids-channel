@@ -119,8 +119,8 @@ private fun rememberChannelPlayer(
         )
     }
 
-    suspend fun captureAndSavePreview() {
-        if (!isActive) return
+    suspend fun captureAndSavePreview(requireActive: Boolean = true) {
+        if ((requireActive && !isActive) || player.isPlaying) return
         val videoUri = player.currentMediaItem?.mediaId ?: return
         val previewChannelUri = playingChannelUri ?: return
         if (channelUri != previewChannelUri) return
@@ -138,7 +138,7 @@ private fun rememberChannelPlayer(
             val bitmap = captureVideoFrame(previewSource) ?: return@withLock
             if (
                 playingChannelUri != previewChannelUri || playerView !== previewSource ||
-                player.currentMediaItem?.mediaId != videoUri || !hasRenderedFirstFrame
+                player.currentMediaItem?.mediaId != videoUri || !hasRenderedFirstFrame || player.isPlaying
             ) {
                 bitmap.recycle()
                 return@withLock
@@ -149,19 +149,18 @@ private fun rememberChannelPlayer(
 
     fun saveProgress() {
         persistProgress()
-        coroutineScope.launch {
-            captureAndSavePreview()
-        }
     }
 
     suspend fun prepareChannelChange() {
-        persistProgress()?.join()
+        persistProgress()
         player.pause()
-        captureAndSavePreview()
+        coroutineScope.launch { captureAndSavePreview(requireActive = false) }
     }
 
     LaunchedEffect(player, channelUri, state.videos) {
         hasRenderedFirstFrame = false
+        playbackFrameState.value = false
+        playbackFrameGate.reset(state.startPositionMs.coerceAtLeast(0))
         if (state.videos.isEmpty()) {
             playingChannelUri = null
             player.clearMediaItems()
@@ -200,6 +199,8 @@ private fun rememberChannelPlayer(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 if (!listening || playingChannelUri != channelUri) return
                 hasRenderedFirstFrame = false
+                playbackFrameState.value = false
+                playbackFrameGate.reset(player.currentPosition.coerceAtLeast(0))
                 saveProgress()
             }
 
@@ -241,12 +242,8 @@ private fun rememberChannelPlayer(
         }
     }
 
-    LaunchedEffect(
-        channelUri,
-        player.currentMediaItem?.mediaId,
-        hasRenderedFirstFrame,
-    ) {
-        if (hasRenderedFirstFrame) captureAndSavePreview()
+    LaunchedEffect(player, active, isPaused, activelyPlaying) {
+        if (active && isPaused && !activelyPlaying) captureAndSavePreview()
     }
 
     DisposableEffect(lifecycleOwner, player, channelUri) {
@@ -261,6 +258,8 @@ private fun rememberChannelPlayer(
                     saveProgress()
                     player.pause()
                     hasRenderedFirstFrame = false
+                    playbackFrameState.value = false
+                    playbackFrameGate.reset(player.currentPosition.coerceAtLeast(0))
                 }
                 else -> Unit
             }
@@ -292,11 +291,6 @@ private fun rememberChannelPlayer(
         togglePlayback = {
             if (player.playWhenReady) player.pause() else player.play()
         },
-        capturePreview = {
-            if (hasRenderedFirstFrame && !player.isPlaying) {
-                playerView?.let { captureVideoFrame(it) }
-            } else null
-        },
         prepareChannelChange = ::prepareChannelChange,
         openSettings = {
             coroutineScope.launch {
@@ -320,7 +314,7 @@ private fun rememberChannelPlayer(
                             useController = false
                             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                             alpha = if (visible) 1f else 0f
-                            translationY = offset
+                            translationY = offset()
                             this.player = player
                             playerView = this
                             val texture = videoSurfaceView as TextureView
@@ -342,7 +336,7 @@ private fun rememberChannelPlayer(
                     update = {
                         it.player = player
                         it.alpha = if (visible) 1f else 0f
-                        it.translationY = offset
+                        it.translationY = offset()
                     },
                     onRelease = { it.player = null },
                 )

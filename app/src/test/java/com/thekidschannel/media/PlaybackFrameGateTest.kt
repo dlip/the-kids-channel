@@ -32,4 +32,16 @@ class PlaybackFrameGateTest {
         assertFalse(resumed.onFrame(200, true))
         assertTrue(resumed.onFrame(200, true))
     }
+
+    @Test
+    fun changingVideosClearsReadinessAndUsesTheNewResumePosition() {
+        val gate = PlaybackFrameGate(0)
+        assertFalse(gate.onFrame(100, true))
+        assertTrue(gate.onFrame(200, true))
+        gate.reset(20_000)
+        assertFalse(gate.onFrame(200, true))
+        assertFalse(gate.onFrame(20_000, false))
+        assertFalse(gate.onFrame(20_000, true))
+        assertTrue(gate.onFrame(20_000, true))
+    }
 }

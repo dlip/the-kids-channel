@@ -1,8 +1,9 @@
 package com.thekidschannel.ui
 
-import android.graphics.Bitmap
+import android.content.pm.ApplicationInfo
 import android.graphics.BitmapFactory
 import android.os.SystemClock
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.Animatable
@@ -63,6 +64,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.thekidschannel.MainUiState
 import com.thekidschannel.media.relativeChannelIndex
@@ -86,15 +88,16 @@ internal fun PlayerScreenLayout(
     state: MainUiState,
     isPaused: Boolean,
     showPreview: Boolean,
+    isPlaybackReady: Boolean,
     onTogglePlayback: () -> Unit,
     onPrepareChannelChange: suspend () -> Unit,
     onSelectChannel: (String) -> Unit,
     onChannelPreviewPath: suspend (String) -> String?,
     onSettings: () -> Unit,
-    capturePreparedPreview: suspend (String) -> Bitmap?,
     hasPreparedVideo: (String) -> Boolean,
-    videoSurface: @Composable (Float, String?, Float) -> Unit,
+    videoSurface: @Composable (() -> Float, String?, () -> Float) -> Unit,
 ) {
+    val debugLogging = LocalContext.current.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     val channelUri = state.selectedChannel?.uri
     var holdingForSettings by remember { mutableStateOf(false) }
     var channelTitleBounds by remember { mutableStateOf<Rect?>(null) }
@@ -115,7 +118,7 @@ internal fun PlayerScreenLayout(
     val channelLabelVisible = isPaused || swipeTarget != null ||
         channelChangeInProgress || pendingChannelUri != null || channelSlide != null
     val currentChannelLabelVisible by rememberUpdatedState(channelLabelVisible)
-    var keepPreviewVisible by remember(channelUri) { mutableStateOf(true) }
+    var keepPreviewVisible by remember(channelUri) { mutableStateOf(showPreview || state.isLoading) }
     val coroutineScope = rememberCoroutineScope()
     val currentChannelPreviewPath by rememberUpdatedState(onChannelPreviewPath)
     val preview = remember(
@@ -126,11 +129,12 @@ internal fun PlayerScreenLayout(
             ?.let(BitmapFactory::decodeFile)
             ?.asImageBitmap()
     }
-    val previewVisible = state.isLoading ||
+    val pausedPreview = isPaused && showPreview && preview != null
+    val previewVisible = state.isLoading || pausedPreview ||
         (keepPreviewVisible && (showPreview || preview != null))
     val waitingForVideo =
         (channelChangeInProgress && transitionFinishedAtMs != 0L) ||
-        (previewVisible && (state.isLoading || showPreview))
+        (!isPlaybackReady && !isPaused) || state.isLoading
     var loadingIndicatorVisible by remember(channelUri) { mutableStateOf(false) }
 
     LaunchedEffect(channelUri, waitingForVideo, transitionFinishedAtMs) {
@@ -183,8 +187,8 @@ internal fun PlayerScreenLayout(
         neighbors.forEach { channel -> loadAdjacentPreview(channel.uri) }
     }
 
-    LaunchedEffect(channelUri, state.isLoading, showPreview) {
-        if (state.isLoading) {
+    LaunchedEffect(channelUri, state.isLoading, showPreview, pausedPreview) {
+        if (state.isLoading || pausedPreview) {
             keepPreviewVisible = true
             return@LaunchedEffect
         }
@@ -226,14 +230,18 @@ internal fun PlayerScreenLayout(
                         easing = FastOutSlowInEasing),
                 ) { swipeOffset = value }
                 transitionFinishedAtMs = SystemClock.uptimeMillis()
+                val preparedAtMs = SystemClock.uptimeMillis()
                 withTimeoutOrNull(CHANNEL_PREPARE_TIMEOUT_MS) {
                     onPrepareChannelChange()
                 }
-                val incomingPreview = capturePreparedPreview(target.uri)?.asImageBitmap()
-                pendingChannelUri = target.uri
-                channelSlide = (swipeTarget?.takeIf { it.uri == target.uri } ?: target).let {
-                    if (incomingPreview != null) it.copy(preview = incomingPreview) else it
+                val preparedVideo = hasPreparedVideo(target.uri)
+                if (debugLogging) {
+                    Log.d("ChannelTransition", "channel=${target.name} " +
+                        "prepareMs=${SystemClock.uptimeMillis() - preparedAtMs} prepared=$preparedVideo")
                 }
+                pendingChannelUri = target.uri
+                channelSlide = if (preparedVideo) null else
+                    (swipeTarget?.takeIf { it.uri == target.uri } ?: target)
                 swipeOffset = 0f
                 swipeTarget = null
                 onSelectChannel(target.uri)
@@ -299,9 +307,9 @@ internal fun PlayerScreenLayout(
         val heightPx = with(LocalDensity.current) { maxHeight.toPx() }
         val incoming = swipeTarget
         videoSurface(
-            swipeOffset,
+            { swipeOffset },
             incoming?.uri,
-            swipeOffset + (incoming?.direction ?: 0) * heightPx,
+            { swipeOffset + (incoming?.direction ?: 0) * heightPx },
         )
 
         Box(

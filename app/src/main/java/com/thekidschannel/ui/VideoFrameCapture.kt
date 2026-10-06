@@ -4,11 +4,13 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
 import android.view.PixelCopy
+import android.view.Surface
 import android.view.SurfaceView
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
@@ -28,11 +30,11 @@ internal suspend fun captureVideoFrame(container: View): Bitmap? =
         )
 
         when (source) {
-            is TextureView -> source.getBitmap(bitmap) ?: run {
-                bitmap.recycle()
-                null
+            is TextureView -> {
+                val surface = Surface(source.surfaceTexture)
+                captureSurface(surface, bitmap) { surface.release() }
             }
-            is SurfaceView -> captureSurfaceView(source, bitmap)
+            is SurfaceView -> captureSurface(source.holder.surface, bitmap)
             else -> {
                 bitmap.recycle()
                 null
@@ -40,8 +42,14 @@ internal suspend fun captureVideoFrame(container: View): Bitmap? =
         }
     }
 
-private suspend fun captureSurfaceView(source: SurfaceView, bitmap: Bitmap): Bitmap? {
-    if (!source.holder.surface.isValid) {
+@OptIn(ExperimentalCoroutinesApi::class)
+private suspend fun captureSurface(
+    source: Surface,
+    bitmap: Bitmap,
+    releaseSource: () -> Unit = {},
+): Bitmap? {
+    if (!source.isValid) {
+        releaseSource()
         bitmap.recycle()
         return null
     }
@@ -51,8 +59,9 @@ private suspend fun captureSurfaceView(source: SurfaceView, bitmap: Bitmap): Bit
                 source,
                 bitmap,
                 { result ->
+                    releaseSource()
                     if (result == PixelCopy.SUCCESS && continuation.isActive) {
-                        continuation.resume(bitmap)
+                        continuation.resume(bitmap) { bitmap.recycle() }
                     } else {
                         bitmap.recycle()
                         if (continuation.isActive) continuation.resume(null)
@@ -61,6 +70,7 @@ private suspend fun captureSurfaceView(source: SurfaceView, bitmap: Bitmap): Bit
                 Handler(Looper.getMainLooper()),
             )
         } catch (_: IllegalArgumentException) {
+            releaseSource()
             bitmap.recycle()
             continuation.resume(null)
         }
