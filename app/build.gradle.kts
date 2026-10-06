@@ -107,8 +107,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
-    "standardImplementation"("androidx.media3:media3-exoplayer:1.6.0")
-    "standardImplementation"("androidx.media3:media3-ui:1.6.0")
+    "standardImplementation"("androidx.media3:media3-exoplayer:1.7.1")
+    "standardImplementation"("androidx.media3:media3-ui:1.7.1")
+    "standardImplementation"("org.jellyfin.media3:media3-ffmpeg-decoder:1.6.1+2")
     "vlcImplementation"("org.videolan.android:libvlc-all:3.6.5")
     "vlcImplementation"("net.java.dev.jna:jna:5.17.0@aar")
     implementation("androidx.documentfile:documentfile:1.0.1")

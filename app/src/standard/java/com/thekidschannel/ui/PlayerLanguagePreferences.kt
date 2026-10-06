@@ -13,8 +13,17 @@ internal fun Player.applyLanguagePreferences(state: MainUiState) {
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal fun androidx.media3.ui.SubtitleView.applyFontSize(percent: Int) {
+internal fun androidx.media3.ui.SubtitleView.applySubtitleAppearance(percent: Int) {
+    setApplyEmbeddedStyles(false)
     setApplyEmbeddedFontSizes(false)
+    setStyle(androidx.media3.ui.CaptionStyleCompat(
+        android.graphics.Color.WHITE,
+        android.graphics.Color.TRANSPARENT,
+        android.graphics.Color.TRANSPARENT,
+        androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+        android.graphics.Color.BLACK,
+        null,
+    ))
     setFractionalTextSize(androidx.media3.ui.SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * percent / 100f)
 }
 

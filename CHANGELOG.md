@@ -4,6 +4,15 @@ Notable changes to The Kids Channel are recorded here.
 
 ## [Unreleased]
 
+## [1.10.8] - 2026-10-06
+
+### Fixed
+
+- Decode AC-3 and other unsupported audio formats in software in the Standard
+  build, restoring English audio on devices without an Android AC-3 decoder.
+- Show Standard-build text subtitles with a transparent background and a black
+  outline instead of black boxes, including styled text subtitles.
+
 ## [1.10.7] - 2026-10-06
 
 ### Added

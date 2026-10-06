@@ -25,6 +25,11 @@ class StandardLanguageSelectionTest {
     @Test fun fontSizeChangesPlainTextSubtitles() = checkFontSize("language-tracks.mkv")
     @Test fun fontSizeChangesStyledTextSubtitles() = checkFontSize("styled-language-tracks.mkv")
 
+    @Test fun ac3EnglishAudioPlaysWithoutNormalization() =
+        checkSelection("en", false, asset = "ac3-language-tracks.mkv")
+    @Test fun ac3EnglishAudioPlaysWithNormalization() =
+        checkSelection("en", false, asset = "ac3-language-tracks.mkv", normalizeAudio = true)
+
     private fun checkFontSize(asset: String) {
         var normal = 0
         var large = 0
@@ -35,7 +40,7 @@ class StandardLanguageSelectionTest {
 
     private fun checkSelection(
         language: String, subtitles: Boolean, fontSize: Int = 100,
-        asset: String = "language-tracks.mkv", onPixels: (Int) -> Unit = {},
+        asset: String = "language-tracks.mkv", normalizeAudio: Boolean = false, onPixels: (Int) -> Unit = {},
     ) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val file = File(instrumentation.targetContext.cacheDir, "language-tracks.mkv")
@@ -46,7 +51,7 @@ class StandardLanguageSelectionTest {
             lateinit var player: ExoPlayer
             lateinit var view: PlayerView
             scenario.onActivity { activity ->
-                player = ExoPlayer.Builder(activity).build()
+                player = ExoPlayer.Builder(activity, NormalizingRenderersFactory(activity, normalizeAudio)).build()
                 player.applyLanguagePreferences(MainUiState(
                     audioLanguage = language, subtitleLanguage = language, subtitlesEnabled = subtitles,
                     subtitleFontSize = fontSize,
@@ -55,7 +60,7 @@ class StandardLanguageSelectionTest {
                     setBackgroundColor(Color.BLACK)
                     useController = false
                     this.player = player
-                    subtitleView?.applyFontSize(fontSize)
+                    subtitleView?.applySubtitleAppearance(fontSize)
                 }
                 activity.setContentView(view)
                 player.volume = 0f
@@ -80,6 +85,13 @@ class StandardLanguageSelectionTest {
                     if (!matched) Thread.sleep(50)
                 }
                 assertTrue("Preferred tracks not selected", matched)
+                if (asset == "ac3-language-tracks.mkv") {
+                    scenario.onActivity {
+                        val counters = checkNotNull(player.audioDecoderCounters)
+                        counters.ensureUpdated()
+                        assertTrue("AC-3 audio was selected but not rendered", counters.renderedOutputBufferCount > 10)
+                    }
+                }
                 Thread.sleep(300)
                 val bounds = Rect()
                 scenario.onActivity { view.getGlobalVisibleRect(bounds) }

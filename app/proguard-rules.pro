@@ -1,5 +1,8 @@
 # Room and Media3 publish their consumer rules.
 
+# DefaultRenderersFactory loads the optional software audio renderer by name.
+-keep class androidx.media3.decoder.ffmpeg.FfmpegAudioRenderer { public <init>(...); }
+
 # LibVLC looks up its Java API from JNI, so these classes must retain their
 # original names and members in minified release builds.
 -keep class org.videolan.libvlc.** { *; }

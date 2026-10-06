@@ -26,6 +26,10 @@ install the larger APK with `vlc` in its filename. The VLC build supports more
 devices and video formats. It can be installed over the Standard build without
 losing folders or saved playback positions.
 
+The Standard build includes a software audio decoder for formats such as AC-3
+when Android cannot decode them. Text subtitles use white lettering with a
+black outline and a transparent background.
+
 Future versions can be installed over the current app without removing its
 folders or saved playback positions.
 

@@ -18,6 +18,10 @@ internal class NormalizingRenderersFactory(
     context: Context,
     private val normalizeAudio: Boolean,
 ) : DefaultRenderersFactory(context) {
+    init {
+        setExtensionRendererMode(EXTENSION_RENDERER_MODE_ON)
+    }
+
     override fun buildAudioSink(
         context: Context,
         enableFloatOutput: Boolean,
