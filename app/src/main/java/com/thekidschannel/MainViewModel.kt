@@ -45,6 +45,10 @@ data class MainUiState(
     val previewPath: String? = null,
     val previewUpdatedAt: Long = 0,
     val normalizeAudio: Boolean = true,
+    val audioLanguage: String = "en",
+    val subtitleLanguage: String = "en",
+    val subtitlesEnabled: Boolean = true,
+    val subtitleFontSize: Int = 100,
     val isLoading: Boolean = true,
     val message: String? = null,
 )
@@ -54,7 +58,13 @@ class MainViewModel(
     private val scanner: ChannelScanner,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
-        MainUiState(normalizeAudio = repository.normalizeAudio),
+        MainUiState(
+            normalizeAudio = repository.normalizeAudio,
+            audioLanguage = repository.audioLanguage,
+            subtitleLanguage = repository.subtitleLanguage,
+            subtitlesEnabled = repository.subtitlesEnabled,
+            subtitleFontSize = repository.subtitleFontSize,
+        ),
     )
     val uiState: StateFlow<MainUiState> = _uiState
     private var channelLoadJob: Job? = null
@@ -208,6 +218,27 @@ class MainViewModel(
     fun setNormalizeAudio(enabled: Boolean) {
         repository.normalizeAudio = enabled
         _uiState.update { it.copy(normalizeAudio = enabled) }
+    }
+
+    fun setAudioLanguage(language: String) {
+        repository.audioLanguage = language
+        _uiState.update { it.copy(audioLanguage = language) }
+    }
+
+    fun setSubtitleLanguage(language: String) {
+        repository.subtitleLanguage = language
+        _uiState.update { it.copy(subtitleLanguage = language) }
+    }
+
+    fun setSubtitlesEnabled(enabled: Boolean) {
+        repository.subtitlesEnabled = enabled
+        _uiState.update { it.copy(subtitlesEnabled = enabled) }
+    }
+
+    fun setSubtitleFontSize(size: Int) {
+        val percent = size.coerceIn(50, 200)
+        repository.subtitleFontSize = percent
+        _uiState.update { it.copy(subtitleFontSize = percent) }
     }
 
     fun selectChannel(uri: String) {

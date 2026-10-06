@@ -61,7 +61,13 @@ number prefixes can be used to control their order.
   open Settings.
 
 Settings includes automatic audio normalization, enabled by default, to keep
-quiet and loud videos at a more consistent volume.
+quiet and loud videos at a more consistent volume. Default audio and subtitle
+languages are English and can be changed in Settings. Subtitles are enabled by
+default; the Subtitles switch turns them off, including forced subtitles.
+The subtitle font-size slider adjusts text size from 50% to 200%, with 100% as
+normal. Picture-based subtitle tracks keep their original size; styled ASS
+subtitles also retain their embedded size in the VLC build. Language
+preferences select existing tracks; they do not translate videos.
 
 Open Stats in Settings to see total watch time grouped by root folder and
 channel, including disabled roots. Watch time recorded before channel tracking

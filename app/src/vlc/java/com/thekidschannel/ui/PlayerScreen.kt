@@ -59,8 +59,10 @@ fun PlayerScreen(
     onPlaybackMessage: (String?) -> Unit,
 ) {
     val context = LocalContext.current
-    val libVlc = remember(state.normalizeAudio) {
-        LibVLC(context, vlcAudioNormalizationOptions(state.normalizeAudio))
+    val libVlc = remember(
+        state.normalizeAudio, state.audioLanguage, state.subtitleLanguage, state.subtitlesEnabled, state.subtitleFontSize,
+    ) {
+        LibVLC(context, vlcAudioNormalizationOptions(state.normalizeAudio) + vlcLanguageOptions(state))
     }
     val softwareDecoderVideos = remember(libVlc) { mutableSetOf<String>() }
     DisposableEffect(libVlc) {

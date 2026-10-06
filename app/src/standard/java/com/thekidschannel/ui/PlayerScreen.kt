@@ -92,6 +92,9 @@ private fun rememberChannelPlayer(
                 .build())
             .build()
     }
+    LaunchedEffect(player, state.audioLanguage, state.subtitleLanguage, state.subtitlesEnabled) {
+        player.applyLanguagePreferences(state)
+    }
     var playerView by remember(player) { mutableStateOf<PlayerView?>(null) }
     val frameCaptureMutex = remember { Mutex() }
     var hasRenderedFirstFrame by remember(channelUri) { mutableStateOf(false) }
@@ -316,6 +319,7 @@ private fun rememberChannelPlayer(
                             alpha = if (visible) 1f else 0f
                             translationY = offset()
                             this.player = player
+                            subtitleView?.applyFontSize(state.subtitleFontSize)
                             playerView = this
                             val texture = videoSurfaceView as TextureView
                             val listener = checkNotNull(texture.surfaceTextureListener)
@@ -335,6 +339,7 @@ private fun rememberChannelPlayer(
                     },
                     update = {
                         it.player = player
+                        it.subtitleView?.applyFontSize(state.subtitleFontSize)
                         it.alpha = if (visible) 1f else 0f
                         it.translationY = offset()
                     },

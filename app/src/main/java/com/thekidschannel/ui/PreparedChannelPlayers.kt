@@ -41,7 +41,10 @@ internal fun PreparedPlayerScreen(
         .forEach { channel ->
             val active = channel.uri == currentUri
             val playback = state.preparedChannels[channel.uri]
-            val player = key(channel.uri, state.normalizeAudio) {
+            val player = key(
+                channel.uri, state.normalizeAudio, state.audioLanguage,
+                state.subtitleLanguage, state.subtitlesEnabled, state.subtitleFontSize,
+            ) {
                 // A cold selection must not dispose neighbors that are already warm.
                 var started by remember { mutableStateOf(false) }
                 if (active || started || (currentFrameReady && playback?.videos?.isNotEmpty() == true)) {
@@ -63,7 +66,10 @@ internal fun PreparedPlayerScreen(
             }
         }
     val current = players[currentUri] ?: return
-    val preparedAtEntry = remember(currentUri, state.normalizeAudio) { current.hasPreparedFrame() }
+    val preparedAtEntry = remember(
+        currentUri, state.normalizeAudio, state.audioLanguage,
+        state.subtitleLanguage, state.subtitlesEnabled, state.subtitleFontSize,
+    ) { current.hasPreparedFrame() }
     val view = LocalView.current
     val isPaused = current.isPaused()
     SideEffect { view.keepScreenOn = !isPaused }

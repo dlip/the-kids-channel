@@ -4,6 +4,17 @@ Notable changes to The Kids Channel are recorded here.
 
 ## [Unreleased]
 
+## [1.10.7] - 2026-10-06
+
+### Added
+
+- Default audio and subtitle language settings, both initially English, with a
+  subtitles switch that also disables forced subtitles. Preferences are saved
+  and applied to current and prepared channels in both playback builds.
+- Separate Audio and Subtitles settings sections, with a saved subtitle font-size
+  control from 50% to 200%. Picture subtitles keep their original size; styled
+  ASS subtitles also retain their embedded size in VLC.
+
 ### Fixed
 
 - Retain prepared neighboring players when switching to a channel that has not

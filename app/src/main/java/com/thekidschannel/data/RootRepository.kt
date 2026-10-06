@@ -38,6 +38,22 @@ class RootRepository(
             preferences.edit { putBoolean(NORMALIZE_AUDIO_KEY, value) }
         }
 
+    var audioLanguage: String
+        get() = preferences.getString("audio_language", "en") ?: "en"
+        set(value) { preferences.edit { putString("audio_language", value) } }
+
+    var subtitleLanguage: String
+        get() = preferences.getString("subtitle_language", "en") ?: "en"
+        set(value) { preferences.edit { putString("subtitle_language", value) } }
+
+    var subtitlesEnabled: Boolean
+        get() = preferences.getBoolean("subtitles_enabled", true)
+        set(value) { preferences.edit { putBoolean("subtitles_enabled", value) } }
+
+    var subtitleFontSize: Int
+        get() = preferences.getInt("subtitle_font_size", 100).coerceIn(50, 200)
+        set(value) { preferences.edit { putInt("subtitle_font_size", value.coerceIn(50, 200)) } }
+
     suspend fun addRoot(uri: Uri) {
         val name = DocumentFile.fromTreeUri(context, uri)?.name
             ?.takeIf(String::isNotBlank)
