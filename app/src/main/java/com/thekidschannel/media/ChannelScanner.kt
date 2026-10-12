@@ -123,7 +123,9 @@ class ChannelScanner(private val context: Context) {
                 }
             }
         }.orEmpty()
-    }.getOrDefault(emptyList())
+    }.getOrDefault(emptyList()).filterNot {
+        it.mimeType == Document.MIME_TYPE_DIR && it.name?.startsWith('.') == true
+    }
 
     private fun DirectoryEntry.isVideo(): Boolean {
         if (mimeType?.startsWith("video/") == true) return true

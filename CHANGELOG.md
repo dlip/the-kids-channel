@@ -4,6 +4,13 @@ Notable changes to The Kids Channel are recorded here.
 
 ## [Unreleased]
 
+## [1.10.9] - 2026-10-12
+
+### Fixed
+
+- Ignore all dot-prefixed directories during channel discovery and nested video
+  scans, including folders such as `.thumbnails`.
+
 ## [1.10.8] - 2026-10-06
 
 ### Fixed
