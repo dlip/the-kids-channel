@@ -9,11 +9,13 @@ import com.thekidschannel.data.RootEntity
 import com.thekidschannel.data.ChannelStatsEntity
 import com.thekidschannel.data.RootRepository
 import com.thekidschannel.media.ChannelFolder
+import com.thekidschannel.media.ChannelOrder
 import com.thekidschannel.media.ChannelScanner
 import com.thekidschannel.media.VideoItem
 import com.thekidschannel.media.neighborChannelUris
 import com.thekidschannel.media.relativeChannelIndex
 import com.thekidschannel.media.resolveResumePoint
+import com.thekidschannel.media.sortChannels
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +39,8 @@ data class MainUiState(
     val roots: List<RootEntity> = emptyList(),
     val channelStats: List<ChannelStatsEntity> = emptyList(),
     val channels: List<ChannelFolder> = emptyList(),
+    val channelOrder: ChannelOrder = ChannelOrder.WATCH_TIME,
+    val channelOrderDescending: Boolean = true,
     val selectedChannel: ChannelFolder? = null,
     val videos: List<VideoItem> = emptyList(),
     val preparedChannels: Map<String, ChannelPlayback> = emptyMap(),
@@ -60,6 +64,8 @@ class MainViewModel(
     private val _uiState = MutableStateFlow(
         MainUiState(
             normalizeAudio = repository.normalizeAudio,
+            channelOrder = repository.channelOrder,
+            channelOrderDescending = repository.channelOrderDescending,
             audioLanguage = repository.audioLanguage,
             subtitleLanguage = repository.subtitleLanguage,
             subtitlesEnabled = repository.subtitlesEnabled,
@@ -79,7 +85,7 @@ class MainViewModel(
         }
         viewModelScope.launch {
             repository.channelStats.collect { stats ->
-                _uiState.update { it.copy(channelStats = stats) }
+                _uiState.update { it.copy(channelStats = stats).withSortedChannels() }
             }
         }
         viewModelScope.launch {
@@ -98,10 +104,11 @@ class MainViewModel(
                     repository.rememberChannels(discoveredChannels)
                     val enabledRoots = roots.filter { it.enabled }.map { it.uri }.toSet()
                     val channels = discoveredChannels.filter { it.rootUri in enabledRoots }
-                    _uiState.update { it.copy(channels = channels) }
-                    val selectedChannel = channels.firstOrNull {
+                    _uiState.update { it.copy(channels = channels).withSortedChannels() }
+                    val orderedChannels = _uiState.value.channels
+                    val selectedChannel = orderedChannels.firstOrNull {
                         it.uri == repository.selectedChannelUri
-                    } ?: channels.firstOrNull()
+                    } ?: orderedChannels.firstOrNull()
                     selectChannel(selectedChannel)
                     for (channel in channels) {
                         if (repository.getPreviewPath(channel.uri) != null) continue
@@ -110,7 +117,32 @@ class MainViewModel(
                     }
                 }
         }
+        viewModelScope.launch {
+            uiState.map { state ->
+                val currentUri = state.selectedChannel?.uri
+                if (currentUri == null || state.isLoading) emptyList() else
+                    listOf(currentUri) + neighborChannelUris(state.channels.map { it.uri }, currentUri)
+            }.distinctUntilChanged().collectLatest { retained ->
+                if (retained.isEmpty()) return@collectLatest
+                _uiState.update { state ->
+                    state.copy(preparedChannels = state.preparedChannels.filterKeys { it in retained })
+                }
+                for (uri in retained.drop(1)) {
+                    if (_uiState.value.preparedChannels.containsKey(uri)) continue
+                    val channel = _uiState.value.channels.firstOrNull { it.uri == uri } ?: continue
+                    val prepared = loadChannel(channel)
+                    _uiState.update { it.copy(preparedChannels = it.preparedChannels + (uri to prepared)) }
+                }
+            }
+        }
     }
+
+    private fun MainUiState.withSortedChannels(): MainUiState = copy(
+        channels = sortChannels(
+            channels, channelStats.associate { it.channelUri to it.watchTimeMs },
+            channelOrder, channelOrderDescending,
+        ),
+    )
 
     fun addRoot(uri: Uri) {
         viewModelScope.launch {
@@ -220,6 +252,16 @@ class MainViewModel(
         _uiState.update { it.copy(normalizeAudio = enabled) }
     }
 
+    fun setChannelOrder(order: ChannelOrder) {
+        repository.channelOrder = order
+        _uiState.update { it.copy(channelOrder = order).withSortedChannels() }
+    }
+
+    fun setChannelOrderDescending(descending: Boolean) {
+        repository.channelOrderDescending = descending
+        _uiState.update { it.copy(channelOrderDescending = descending).withSortedChannels() }
+    }
+
     fun setAudioLanguage(language: String) {
         repository.audioLanguage = language
         _uiState.update { it.copy(audioLanguage = language) }
@@ -299,15 +341,6 @@ class MainViewModel(
                     isLoading = false,
                     message = if (playback.videos.isEmpty()) "No playable videos in this channel" else null,
                 )
-            }
-            val neighbors = neighborChannelUris(_uiState.value.channels.map { it.uri }, channel.uri)
-            val retained = neighbors + channel.uri
-            _uiState.update { it.copy(preparedChannels = it.preparedChannels.filterKeys { uri -> uri in retained }) }
-            for (uri in neighbors) {
-                if (_uiState.value.preparedChannels.containsKey(uri)) continue
-                val neighbor = _uiState.value.channels.firstOrNull { it.uri == uri } ?: continue
-                val prepared = loadChannel(neighbor)
-                _uiState.update { it.copy(preparedChannels = it.preparedChannels + (uri to prepared)) }
             }
         }
     }

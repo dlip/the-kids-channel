@@ -71,6 +71,14 @@ class FilmstripNavigationTest {
             }
             assertTrue(applied.get().await(10, TimeUnit.SECONDS))
             instrumentation.waitForIdleSync()
+            val focusDeadline = SystemClock.uptimeMillis() + 5_000
+            var focused = false
+            while (!focused && SystemClock.uptimeMillis() < focusDeadline) {
+                scenario.onActivity { focused = it.hasWindowFocus() }
+                if (!focused) SystemClock.sleep(50)
+            }
+            assertTrue("The player must have focus before sending gestures", focused)
+            instrumentation.uiAutomation.waitForIdle(300, 5_000)
             scenario.onActivity { it.window.decorView.getGlobalVisibleRect(bounds) }
 
             val x = bounds.exactCenterX()

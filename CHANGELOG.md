@@ -6,6 +6,10 @@ Notable changes to The Kids Channel are recorded here.
 
 ### Added
 
+- Saved channel ordering by watched time (most watched first by default),
+  alphabetical name, or directory age, with ascending and descending options.
+  Directory age uses the folder's last-modified date, with unknown dates last.
+  The same order applies to swipes and the filmstrip across enabled roots.
 - A channel filmstrip appears when tapping to pause. Tap a channel picture to
   switch channels or tap outside the strip to resume. Swipe navigation remains
   available alongside the filmstrip, with no navigation setting required.

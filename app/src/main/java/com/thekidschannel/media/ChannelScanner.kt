@@ -22,6 +22,7 @@ data class ChannelFolder(
     val rootUri: String,
     val uri: String,
     val name: String,
+    val lastModifiedMs: Long? = null,
 )
 
 class ChannelScanner(private val context: Context) {
@@ -42,6 +43,7 @@ class ChannelScanner(private val context: Context) {
                             rootUri = root.uri,
                             uri = directory.uri.toString(),
                             name = directory.name ?: "Channel",
+                            lastModifiedMs = directory.lastModifiedMs,
                         )
                     }
             }
@@ -100,7 +102,12 @@ class ChannelScanner(private val context: Context) {
         }
     }
 
-    private data class DirectoryEntry(val uri: Uri, val name: String?, val mimeType: String?)
+    private data class DirectoryEntry(
+        val uri: Uri,
+        val name: String?,
+        val mimeType: String?,
+        val lastModifiedMs: Long?,
+    )
 
     private fun listChildren(directory: Uri): List<DirectoryEntry> = runCatching {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
@@ -108,17 +115,22 @@ class ChannelScanner(private val context: Context) {
         )
         val projection = arrayOf(
             Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME, Document.COLUMN_MIME_TYPE,
+            Document.COLUMN_LAST_MODIFIED,
         )
         context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
             val idIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DOCUMENT_ID)
             val nameIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_DISPLAY_NAME)
             val typeIndex = cursor.getColumnIndexOrThrow(Document.COLUMN_MIME_TYPE)
+            val modifiedIndex = cursor.getColumnIndex(Document.COLUMN_LAST_MODIFIED)
             buildList {
                 while (cursor.moveToNext()) {
                     add(DirectoryEntry(
                         DocumentsContract.buildDocumentUriUsingTree(directory, cursor.getString(idIndex)),
                         cursor.getString(nameIndex),
                         cursor.getString(typeIndex),
+                        if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) {
+                            cursor.getLong(modifiedIndex).takeIf { it > 0 }
+                        } else null,
                     ))
                 }
             }

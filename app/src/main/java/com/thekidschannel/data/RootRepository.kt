@@ -8,6 +8,7 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.thekidschannel.media.ChannelFolder
+import com.thekidschannel.media.ChannelOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,6 +38,16 @@ class RootRepository(
         set(value) {
             preferences.edit { putBoolean(NORMALIZE_AUDIO_KEY, value) }
         }
+
+    var channelOrder: ChannelOrder
+        get() = ChannelOrder.entries.firstOrNull {
+            it.name == preferences.getString("channel_order", null)
+        } ?: ChannelOrder.WATCH_TIME
+        set(value) { preferences.edit { putString("channel_order", value.name) } }
+
+    var channelOrderDescending: Boolean
+        get() = preferences.getBoolean("channel_order_descending", true)
+        set(value) { preferences.edit { putBoolean("channel_order_descending", value) } }
 
     var audioLanguage: String
         get() = preferences.getString("audio_language", "en") ?: "en"

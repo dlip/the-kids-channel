@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.thekidschannel.MainUiState
 import com.thekidschannel.MainViewModel
+import com.thekidschannel.media.ChannelOrder
 
 @Composable
 fun KidsChannelApp(
@@ -88,6 +89,8 @@ fun KidsChannelApp(
             },
             onRemove = viewModel::removeRoot,
             onRootEnabledChanged = viewModel::setRootEnabled,
+            onChannelOrderChanged = viewModel::setChannelOrder,
+            onChannelOrderDescendingChanged = viewModel::setChannelOrderDescending,
             onNormalizeAudioChanged = viewModel::setNormalizeAudio,
             onAudioLanguageChanged = viewModel::setAudioLanguage,
             onSubtitleLanguageChanged = viewModel::setSubtitleLanguage,
@@ -124,6 +127,8 @@ private fun ChannelSettings(
     onAdd: () -> Unit,
     onRemove: (String) -> Unit,
     onRootEnabledChanged: (String, Boolean) -> Unit,
+    onChannelOrderChanged: (ChannelOrder) -> Unit,
+    onChannelOrderDescendingChanged: (Boolean) -> Unit,
     onNormalizeAudioChanged: (Boolean) -> Unit,
     onAudioLanguageChanged: (String) -> Unit,
     onSubtitleLanguageChanged: (String) -> Unit,
@@ -156,6 +161,13 @@ private fun ChannelSettings(
         ) {
             item {
                 Button(onClick = onStats) { Text("Stats") }
+                Spacer(Modifier.height(12.dp))
+                ChannelOrderSettings(
+                    order = state.channelOrder,
+                    descending = state.channelOrderDescending,
+                    onOrderChanged = onChannelOrderChanged,
+                    onDescendingChanged = onChannelOrderDescendingChanged,
+                )
                 Spacer(Modifier.height(12.dp))
                 Text("Audio", style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).semantics { heading() })

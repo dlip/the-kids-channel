@@ -69,6 +69,12 @@ The filmstrip shows channel pictures along the bottom while paused. Tap a
 picture to change channels, or press Back to close the strip. Swiping up or down
 also changes channels, so both controls are always available.
 
+Settings includes Channel order options for watched time (the default),
+alphabetical order, or directory age, with ascending and descending directions.
+The default is most watched first. Directory age uses the folder's last-modified
+date; folders without a date appear last. The selected order applies to both
+swipes and the filmstrip across all enabled root folders.
+
 Settings includes automatic audio normalization, enabled by default, to keep
 quiet and loud videos at a more consistent volume. Default audio and subtitle
 languages are English and can be changed in Settings. Subtitles are enabled by
