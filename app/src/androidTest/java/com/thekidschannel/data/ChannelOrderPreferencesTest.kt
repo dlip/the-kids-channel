@@ -20,13 +20,14 @@ class ChannelOrderPreferencesTest {
         val application = context.applicationContext as KidsChannelApplication
         val repository = application.rootRepository
         val preferences = context.getSharedPreferences("playback", Context.MODE_PRIVATE)
-        val keys = listOf("channel_order", "channel_order_descending")
+        val keys = listOf("channel_order", "channel_order_descending", "show_channel_filmstrip")
         val original = preferences.all.filterKeys { it in keys }
         val store = ViewModelStore()
         try {
             assertTrue(preferences.edit().apply { keys.forEach { remove(it) } }.commit())
             assertEquals(ChannelOrder.WATCH_TIME, repository.channelOrder)
             assertTrue(repository.channelOrderDescending)
+            assertTrue(repository.showChannelFilmstrip)
             preferences.edit().putString("channel_order", "invalid").commit()
             assertEquals(ChannelOrder.WATCH_TIME, repository.channelOrder)
 
@@ -34,15 +35,19 @@ class ChannelOrderPreferencesTest {
                 val model = ViewModelProvider(store, MainViewModelFactory(application))[MainViewModel::class.java]
                 assertEquals(ChannelOrder.WATCH_TIME, model.uiState.value.channelOrder)
                 assertTrue(model.uiState.value.channelOrderDescending)
+                assertTrue(model.uiState.value.showChannelFilmstrip)
                 model.setChannelOrder(ChannelOrder.DIRECTORY_AGE)
                 model.setChannelOrderDescending(false)
+                model.setShowChannelFilmstrip(false)
                 assertEquals(ChannelOrder.DIRECTORY_AGE, model.uiState.value.channelOrder)
                 assertFalse(model.uiState.value.channelOrderDescending)
+                assertFalse(model.uiState.value.showChannelFilmstrip)
                 store.clear()
             }
             assertTrue(preferences.edit().commit())
             assertEquals(ChannelOrder.DIRECTORY_AGE, repository.channelOrder)
             assertFalse(repository.channelOrderDescending)
+            assertFalse(repository.showChannelFilmstrip)
             val document = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder()
                 .parse(java.io.File(context.applicationInfo.dataDir, "shared_prefs/playback.xml"))
             val strings = document.getElementsByTagName("string")
@@ -53,11 +58,15 @@ class ChannelOrderPreferencesTest {
             val savedDirection = (0 until booleans.length).map { booleans.item(it) }
                 .first { it.attributes.getNamedItem("name").nodeValue == "channel_order_descending" }
             assertEquals("false", savedDirection.attributes.getNamedItem("value").nodeValue)
+            val savedFilmstrip = (0 until booleans.length).map { booleans.item(it) }
+                .first { it.attributes.getNamedItem("name").nodeValue == "show_channel_filmstrip" }
+            assertEquals("false", savedFilmstrip.attributes.getNamedItem("value").nodeValue)
 
             instrumentation.runOnMainSync {
                 val restored = ViewModelProvider(store, MainViewModelFactory(application))[MainViewModel::class.java]
                 assertEquals(ChannelOrder.DIRECTORY_AGE, restored.uiState.value.channelOrder)
                 assertFalse(restored.uiState.value.channelOrderDescending)
+                assertFalse(restored.uiState.value.showChannelFilmstrip)
             }
         } finally {
             instrumentation.runOnMainSync { store.clear() }

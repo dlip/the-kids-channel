@@ -41,6 +41,7 @@ data class MainUiState(
     val channels: List<ChannelFolder> = emptyList(),
     val channelOrder: ChannelOrder = ChannelOrder.WATCH_TIME,
     val channelOrderDescending: Boolean = true,
+    val showChannelFilmstrip: Boolean = true,
     val selectedChannel: ChannelFolder? = null,
     val videos: List<VideoItem> = emptyList(),
     val preparedChannels: Map<String, ChannelPlayback> = emptyMap(),
@@ -66,6 +67,7 @@ class MainViewModel(
             normalizeAudio = repository.normalizeAudio,
             channelOrder = repository.channelOrder,
             channelOrderDescending = repository.channelOrderDescending,
+            showChannelFilmstrip = repository.showChannelFilmstrip,
             audioLanguage = repository.audioLanguage,
             subtitleLanguage = repository.subtitleLanguage,
             subtitlesEnabled = repository.subtitlesEnabled,
@@ -260,6 +262,11 @@ class MainViewModel(
     fun setChannelOrderDescending(descending: Boolean) {
         repository.channelOrderDescending = descending
         _uiState.update { it.copy(channelOrderDescending = descending).withSortedChannels() }
+    }
+
+    fun setShowChannelFilmstrip(enabled: Boolean) {
+        repository.showChannelFilmstrip = enabled
+        _uiState.update { it.copy(showChannelFilmstrip = enabled) }
     }
 
     fun setAudioLanguage(language: String) {

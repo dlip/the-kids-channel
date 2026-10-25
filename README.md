@@ -69,6 +69,10 @@ The filmstrip shows channel pictures along the bottom while paused. Tap a
 picture to change channels, or press Back to close the strip. Swiping up or down
 also changes channels, so both controls are always available.
 
+Turn off **Show channel filmstrip** in Settings to hide the strip when pausing.
+It is enabled by default. Tapping still pauses or resumes, and swipes still
+change channels when the strip is disabled.
+
 Settings includes Channel order options for watched time (the default),
 alphabetical order, or directory age, with ascending and descending directions.
 The default is most watched first. Directory age uses the folder's last-modified

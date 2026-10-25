@@ -135,6 +135,30 @@ class FilmstripNavigationTest {
             touch(x, y)
             awaitNode("Channel D")
             assertTrue(paused.value)
+
+            scenario.onActivity { state.value = state.value.copy(showChannelFilmstrip = false) }
+            instrumentation.waitForIdleSync()
+            assertTrue(paused.value)
+            awaitNoNode("Channels")
+
+            touch(x, y)
+            instrumentation.waitForIdleSync()
+            assertFalse(paused.value)
+            touch(x, y)
+            instrumentation.waitForIdleSync()
+            assertTrue(paused.value)
+            awaitNoNode("Channels")
+
+            touch(x, y, y - bounds.height() / 3)
+            awaitChannel(state, "D")
+            assertFalse(paused.value)
+
+            scenario.onActivity { state.value = state.value.copy(showChannelFilmstrip = true) }
+            instrumentation.waitForIdleSync()
+            SystemClock.sleep(350)
+            touch(x, y)
+            awaitNode("Channels")
+            assertTrue(paused.value)
         }
     }
 
@@ -167,16 +191,8 @@ class FilmstripNavigationTest {
     private fun awaitNode(label: String): AccessibilityNodeInfo {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val deadline = SystemClock.uptimeMillis() + 5_000
-        fun find(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
-            if (node == null) return null
-            if (node.text?.toString() == label || node.contentDescription?.toString() == label) return node
-            for (index in 0 until node.childCount) {
-                find(node.getChild(index))?.let { return it }
-            }
-            return null
-        }
         while (SystemClock.uptimeMillis() < deadline) {
-            find(automation.rootInActiveWindow)?.let { found ->
+            findNode(automation.rootInActiveWindow, label)?.let { found ->
                 var target = found
                 while (!target.isClickable) target = target.parent ?: return found
                 return target
@@ -184,5 +200,23 @@ class FilmstripNavigationTest {
             SystemClock.sleep(50)
         }
         error("Could not find $label")
+    }
+
+    private fun hasNode(label: String): Boolean =
+        findNode(InstrumentationRegistry.getInstrumentation().uiAutomation.rootInActiveWindow, label) != null
+
+    private fun awaitNoNode(label: String) {
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        while (hasNode(label) && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(50)
+        assertFalse("$label should be hidden", hasNode(label))
+    }
+
+    private fun findNode(node: AccessibilityNodeInfo?, label: String): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (node.text?.toString() == label || node.contentDescription?.toString() == label) return node
+        for (index in 0 until node.childCount) {
+            findNode(node.getChild(index), label)?.let { return it }
+        }
+        return null
     }
 }

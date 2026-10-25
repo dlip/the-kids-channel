@@ -49,6 +49,10 @@ class RootRepository(
         get() = preferences.getBoolean("channel_order_descending", true)
         set(value) { preferences.edit { putBoolean("channel_order_descending", value) } }
 
+    var showChannelFilmstrip: Boolean
+        get() = preferences.getBoolean("show_channel_filmstrip", true)
+        set(value) { preferences.edit { putBoolean("show_channel_filmstrip", value) } }
+
     var audioLanguage: String
         get() = preferences.getString("audio_language", "en") ?: "en"
         set(value) { preferences.edit { putString("audio_language", value) } }

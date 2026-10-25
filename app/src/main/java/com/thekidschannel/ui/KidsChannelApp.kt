@@ -91,6 +91,7 @@ fun KidsChannelApp(
             onRootEnabledChanged = viewModel::setRootEnabled,
             onChannelOrderChanged = viewModel::setChannelOrder,
             onChannelOrderDescendingChanged = viewModel::setChannelOrderDescending,
+            onShowChannelFilmstripChanged = viewModel::setShowChannelFilmstrip,
             onNormalizeAudioChanged = viewModel::setNormalizeAudio,
             onAudioLanguageChanged = viewModel::setAudioLanguage,
             onSubtitleLanguageChanged = viewModel::setSubtitleLanguage,
@@ -129,6 +130,7 @@ private fun ChannelSettings(
     onRootEnabledChanged: (String, Boolean) -> Unit,
     onChannelOrderChanged: (ChannelOrder) -> Unit,
     onChannelOrderDescendingChanged: (Boolean) -> Unit,
+    onShowChannelFilmstripChanged: (Boolean) -> Unit,
     onNormalizeAudioChanged: (Boolean) -> Unit,
     onAudioLanguageChanged: (String) -> Unit,
     onSubtitleLanguageChanged: (String) -> Unit,
@@ -161,6 +163,18 @@ private fun ChannelSettings(
         ) {
             item {
                 Button(onClick = onStats) { Text("Stats") }
+                Spacer(Modifier.height(12.dp))
+                ListItem(
+                    headlineContent = { Text("Show channel filmstrip") },
+                    supportingContent = { Text("Show channel pictures when playback is paused") },
+                    trailingContent = {
+                        Switch(
+                            checked = state.showChannelFilmstrip,
+                            onCheckedChange = onShowChannelFilmstripChanged,
+                            modifier = Modifier.semantics { contentDescription = "Show channel filmstrip" },
+                        )
+                    },
+                )
                 Spacer(Modifier.height(12.dp))
                 ChannelOrderSettings(
                     order = state.channelOrder,

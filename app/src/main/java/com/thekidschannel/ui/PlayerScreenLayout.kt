@@ -100,7 +100,7 @@ internal fun PlayerScreenLayout(
 ) {
     val debugLogging = LocalContext.current.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     val channelUri = state.selectedChannel?.uri
-    var filmstripVisible by remember(channelUri) { mutableStateOf(false) }
+    var filmstripVisible by remember(channelUri, state.showChannelFilmstrip) { mutableStateOf(false) }
     BackHandler(enabled = filmstripVisible) { filmstripVisible = false }
     var holdingForSettings by remember { mutableStateOf(false) }
     var channelTitleBounds by remember { mutableStateOf<Rect?>(null) }
@@ -292,7 +292,7 @@ internal fun PlayerScreenLayout(
         newValue = { uri -> loadAdjacentPreview(uri) },
     )
     val currentTapPlayback by rememberUpdatedState(newValue = {
-        filmstripVisible = !isPaused
+        filmstripVisible = state.showChannelFilmstrip && !isPaused
         onTogglePlayback()
     })
     val currentSettings by rememberUpdatedState(onSettings)
@@ -448,7 +448,9 @@ internal fun PlayerScreenLayout(
             modifier = Modifier
                 .fillMaxSize()
                 .semantics {
-                    contentDescription = "Tap to pause and browse channels. Tap again to resume. " +
+                    contentDescription = (if (state.showChannelFilmstrip)
+                        "Tap to pause and browse channels. Tap again to resume. " else
+                        "Tap to pause or resume. ") +
                         "Swipe up or down to change channels. While paused, hold the upper-left " +
                         "channel title for two seconds for settings."
                     onClick(label = if (isPaused) "Resume video" else "Pause video") {
