@@ -4,6 +4,16 @@ Notable changes to The Kids Channel are recorded here.
 
 ## [Unreleased]
 
+### Added
+
+- A channel filmstrip appears when tapping to pause. Tap a channel picture to
+  switch channels or tap outside the strip to resume. Swipe navigation remains
+  available alongside the filmstrip, with no navigation setting required.
+
+### Fixed
+
+- Keep the filmstrip available when pausing after selecting another channel.
+
 ## [1.10.9] - 2026-10-12
 
 ### Fixed

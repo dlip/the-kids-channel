@@ -4,6 +4,7 @@ import android.content.pm.ApplicationInfo
 import android.graphics.BitmapFactory
 import android.os.SystemClock
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.Animatable
@@ -99,6 +100,8 @@ internal fun PlayerScreenLayout(
 ) {
     val debugLogging = LocalContext.current.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     val channelUri = state.selectedChannel?.uri
+    var filmstripVisible by remember(channelUri) { mutableStateOf(false) }
+    BackHandler(enabled = filmstripVisible) { filmstripVisible = false }
     var holdingForSettings by remember { mutableStateOf(false) }
     var channelTitleBounds by remember { mutableStateOf<Rect?>(null) }
     val holdProgress = remember { Animatable(0f) }
@@ -115,7 +118,7 @@ internal fun PlayerScreenLayout(
     var transitionFinishedAtMs by remember { mutableLongStateOf(0L) }
     var pendingChannelUri by remember { mutableStateOf<String?>(null) }
     var channelSlide by remember { mutableStateOf<SwipeTarget?>(null) }
-    val channelLabelVisible = isPaused || swipeTarget != null ||
+    val channelLabelVisible = filmstripVisible || isPaused || swipeTarget != null ||
         channelChangeInProgress || pendingChannelUri != null || channelSlide != null
     val currentChannelLabelVisible by rememberUpdatedState(channelLabelVisible)
     var keepPreviewVisible by remember(channelUri) { mutableStateOf(showPreview || state.isLoading) }
@@ -288,7 +291,10 @@ internal fun PlayerScreenLayout(
     val currentLoadAdjacentPreview by rememberUpdatedState<suspend (String) -> Unit>(
         newValue = { uri -> loadAdjacentPreview(uri) },
     )
-    val currentTogglePlayback by rememberUpdatedState(onTogglePlayback)
+    val currentTapPlayback by rememberUpdatedState(newValue = {
+        filmstripVisible = !isPaused
+        onTogglePlayback()
+    })
     val currentSettings by rememberUpdatedState(onSettings)
     // Fresh lambdas keep gesture callbacks tied to the newly selected channel.
     val currentSwipeTarget by rememberUpdatedState<(Int, Int) -> SwipeTarget?>(
@@ -442,13 +448,16 @@ internal fun PlayerScreenLayout(
             modifier = Modifier
                 .fillMaxSize()
                 .semantics {
-                    contentDescription = "Tap to pause or resume. Swipe up or down to change " +
-                        "channels. While paused, hold the upper-left channel title for two seconds for settings."
+                    contentDescription = "Tap to pause and browse channels. Tap again to resume. " +
+                        "Swipe up or down to change channels. While paused, hold the upper-left " +
+                        "channel title for two seconds for settings."
                     onClick(label = if (isPaused) "Resume video" else "Pause video") {
                         if (!channelChangeInProgress && swipeTarget == null &&
                             swipeResetJob?.isActive != true &&
                             SystemClock.uptimeMillis() >= blockPauseUntil
-                        ) currentTogglePlayback()
+                        ) {
+                            currentTapPlayback()
+                        }
                         true
                     }
                     customActions = listOf(
@@ -607,7 +616,9 @@ internal fun PlayerScreenLayout(
                                 SystemClock.uptimeMillis() >= blockPauseUntil &&
                                 eventTimeIsTap(down.uptimeMillis, SystemClock.uptimeMillis())
                             ) {
-                                if (!holdOnChannelTitle) currentTogglePlayback()
+                                if (!holdOnChannelTitle) {
+                                    currentTapPlayback()
+                                }
                             } else if (!released && target != null) {
                                 swipeOffset = 0f
                                 swipeTarget = null
@@ -621,6 +632,32 @@ internal fun PlayerScreenLayout(
                     }
                 },
         )
+
+        if (filmstripVisible) {
+            ChannelFilmstrip(
+                channels = state.channels,
+                selectedChannelUri = channelUri,
+                previewUpdatedAt = state.previewUpdatedAt,
+                onChannelPreviewPath = onChannelPreviewPath,
+                onSelectChannel = { uri ->
+                    filmstripVisible = false
+                    if (uri != channelUri && !channelChangeInProgress) {
+                        channelChangeInProgress = true
+                        coroutineScope.launch {
+                            try {
+                                withTimeoutOrNull(CHANNEL_PREPARE_TIMEOUT_MS) {
+                                    onPrepareChannelChange()
+                                }
+                                onSelectChannel(uri)
+                            } finally {
+                                channelChangeInProgress = false
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
     }
 }
 

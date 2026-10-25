@@ -8,7 +8,7 @@ files, and each folder becomes a channel for children to watch.
 There is no timeline, seeking, playlist editing, or next-video button. Videos
 play in order, loop continuously, and resume where they left off.
 
-![The Kids Channel paused with the channel title and pause button visible](docs/player-controls.png)
+![The Kids Channel paused with mock artwork and the channel filmstrip visible](docs/player-controls.jpg)
 
 ## Download and install
 
@@ -60,9 +60,14 @@ number prefixes can be used to control their order.
 
 - Swipe up to move to the next channel and swipe down to move to the previous
   channel, including while a channel is loading. Channels wrap around at either end.
-- Tap anywhere to pause or resume playback.
+- Tap anywhere to pause and show the channel filmstrip. Tap again outside the
+  strip to resume playback.
 - While paused, hold the channel title in the upper left for two seconds to
   open Settings.
+
+The filmstrip shows channel pictures along the bottom while paused. Tap a
+picture to change channels, or press Back to close the strip. Swiping up or down
+also changes channels, so both controls are always available.
 
 Settings includes automatic audio normalization, enabled by default, to keep
 quiet and loud videos at a more consistent volume. Default audio and subtitle
