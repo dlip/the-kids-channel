@@ -4,6 +4,8 @@ Notable changes to The Kids Channel are recorded here.
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-25
+
 ### Added
 
 - A saved Show channel filmstrip switch in Settings, enabled by default. Turn
